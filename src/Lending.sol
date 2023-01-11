@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT
 // This contract is not audited!!!
 pragma solidity ^0.8.7;
-
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "./AggregatorV3Interface.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "../lib/openzeppelin-contracts/contracts/access/Ownable.sol";
+import "./interface/AggregatorV3Interface.sol";
+import "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import "../lib/openzeppelin-contracts/contracts/security/ReentrancyGuard.sol";
 
 error TransferFailed();
 error TokenNotAllowed(address token);
@@ -44,17 +43,20 @@ contract Lending is ReentrancyGuard, Ownable {
         isAllowedToken(token)
         moreThanZero(amount)
     {
-        emit Deposit(msg.sender, token, amount);
+        
         s_accountToTokenDeposits[msg.sender][token] += amount;
         bool success = IERC20(token).transferFrom(msg.sender, address(this), amount);
         if (!success) revert TransferFailed();
+        emit Deposit(msg.sender, token, amount);
     }
 
     function withdraw(address token, uint256 amount) external nonReentrant moreThanZero(amount) {
         require(s_accountToTokenDeposits[msg.sender][token] >= amount, "Not enough funds");
-        emit Withdraw(msg.sender, token, amount);
+        
         _pullFunds(msg.sender, token, amount);
         require(healthFactor(msg.sender) >= MIN_HEALH_FACTOR, "Platform will go insolvent!");
+        emit Withdraw(msg.sender, token, amount);
+        
     }
 
     function _pullFunds(
@@ -96,9 +98,10 @@ contract Lending is ReentrancyGuard, Ownable {
             rewardToken,
             rewardAmountInUSD + halfDebtInUSD
         );
-        emit Liquidate(account, repayToken, rewardToken, halfDebtInUSD, msg.sender);
+        
         _repay(account, repayToken, halfDebt);
         _pullFunds(account, rewardToken, totalRewardAmountInRewardToken);
+        emit Liquidate(account, repayToken, rewardToken, halfDebtInUSD, msg.sender);
     }
 
     function repay(address token, uint256 amount)
@@ -107,8 +110,9 @@ contract Lending is ReentrancyGuard, Ownable {
         isAllowedToken(token)
         moreThanZero(amount)
     {
-        emit Repay(msg.sender, token, amount);
+        
         _repay(msg.sender, token, amount);
+        emit Repay(msg.sender, token, amount);
     }
 
     function _repay(
@@ -209,8 +213,4 @@ contract Lending is ReentrancyGuard, Ownable {
         emit AllowedTokenSet(token, priceFeed);
     }
 
-    /********************/
-    /* Getter Functions */
-    /********************/
-    // Ideally, we'd have getter functions for all our s_ variables we want exposed, and set them all to private.
-    // But, for the purpose of this demo, we've left them public fo
+}
